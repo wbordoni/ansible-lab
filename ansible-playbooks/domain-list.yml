@@ -1,0 +1,5 @@
+---
+- vars:
+  domain:
+    - example.com
+    - example2.com

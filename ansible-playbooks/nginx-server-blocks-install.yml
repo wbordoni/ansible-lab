@@ -1,0 +1,81 @@
+---
+- hosts: worker
+  vars_files:
+    - domain-list.yml
+
+  tasks:
+  - name: Ensure user croco exists
+    user:
+      name: croco
+      state: present
+
+  - name: Install nginx from it's repository
+    yum:
+      #name: http://nginx.org/packages/centos/7/noarch/RPMS/nginx-release-centos-7-0.el7.ngx.noarch.rpm
+      name: nginx
+      state: present
+
+  - name: Create directory structure for {{ domain }}
+    file:
+      path: "/var/www/{{ item }}/html"
+      state: directory
+      owner: croco
+      mode: 0755
+      recurse: yes
+    loop: "{{ domain }}"
+
+  - name: Create index.html for {{ domain }}
+    template:
+      src: index-template.j2
+      dest: /var/www/{{item }}/html/index.html
+      owner: croco
+    loop: "{{ domain }}"
+
+  - name: Create server block files
+    file:
+      path: "/etc/nginx/{{ item }}"
+      state: directory
+    loop:
+      - sites-available
+      - sites-enabled
+
+  - name: Include server blocks into nginx main configuration file
+    blockinfile:
+      path: /home/croco/nginx.conf
+      insertafter: 'http\s*{[^}]*'
+      state: present
+      block: 
+        include /etc/nginx/sites-enables/*.conf;
+        server_names_hash_bucket_size 64;
+
+  - name: Include server blocks into nginx main configuration file
+    lineinfile:
+      path: /etc/nginx/nginx.conf
+      state: present
+      regexp: 'include \/etc\/nginx\/conf.d\/\*.conf;'
+      line: "    include /etc/nginx/conf.d/*.conf; include /etc/nginx/sites-enabled/*.conf; server_names_hash_bucket_size 64;"
+
+  - name: Create server configuration files for {{ domain }}
+    template:
+      src: serverconf-template.j2
+      dest: "/etc/nginx/sites-available/{{ item }}.conf"
+    loop: "{{ domain }}"
+
+  - name: Create symlink to enable server block files for {{ domain }}
+    file:
+      dest: "/etc/nginx/sites-enabled/{{ item }}.conf"
+      src: "/etc/nginx/sites-available/{{ item }}.conf"
+      state: link
+    loop: "{{ domain }}"
+  
+  - name: Add {{ domain }} to /etc/hosts
+    lineinfile:
+      path: /etc/hosts
+      state: present
+      line: "127.0.0.1 {{ item }}"
+    loop: "{{ domain }}"
+
+  - name: Restart nginx
+    systemd:
+      name: nginx
+      state: restarted

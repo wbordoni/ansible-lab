@@ -1,0 +1,9 @@
+---
+- hosts: all
+  tasks:
+  - name: Install a list of packages
+    yum:
+      name:
+        - vim
+        - epel-release
+      state: present
