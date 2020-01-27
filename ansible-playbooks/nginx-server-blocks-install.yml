@@ -40,15 +40,6 @@
       - sites-enabled
 
   - name: Include server blocks into nginx main configuration file
-    blockinfile:
-      path: /home/croco/nginx.conf
-      insertafter: 'http\s*{[^}]*'
-      state: present
-      block: 
-        include /etc/nginx/sites-enables/*.conf;
-        server_names_hash_bucket_size 64;
-
-  - name: Include server blocks into nginx main configuration file
     lineinfile:
       path: /etc/nginx/nginx.conf
       state: present
